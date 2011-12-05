@@ -1,14 +1,14 @@
-#
-#			+-+ Event Watch +-+
-#
-#
-# Watch for events on a dir (using kqueue on FreeBSD) and send changes to a IRC channel through sockets.
-#  + Useful when you have a jail, a vm or servers seperating the eggdrop and the folder in question.
-#
-#	[WEB SERVER #1] <- Watching for web folder changes (picture uploads etc.)
-#	     ||
-#	     || <- Sockets for transmitting data
-#	     ||
-#	[BOT SERVER #2] <- Eggdrop connected to IRC
-#
-#
+
+				+-+ Event Watch +-+
+
+
+  Watch for events on a dir (using kqueue on FreeBSD) and send changes to a IRC channel through sockets.
+   + Useful when you have a jail, a vm or servers seperating the eggdrop and the folder in question.
+
+	[WEB SERVER #1] <- Watching for web folder changes (picture uploads etc.)
+	     ||
+	     || <- Sockets for transmitting data
+	     ||
+	[BOT SERVER #2] <- Eggdrop connected to IRC
+
+
