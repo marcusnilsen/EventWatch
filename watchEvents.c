@@ -7,9 +7,12 @@
  *
  *     gcc -o watchEvents watchEvents.c -Wall -W -Wextra -ansi -pedantic
  *
+ *	rm watchEvents ; gcc -o watchEvents watchEvents.c -Wall -W -Wextra -ansi -pedanti && ./watchEvents /tmp/testfile/
+ *	Check for incoming message on server: nc -l -u -p 2000
  */
 
-/* libs */
+/* Kqueue and file control */
+#include <sys/types.h>		/* needed for kqueue on fbsd, but works without on OSX */
 #include <sys/event.h> 		/* kqueue */
 #include <sys/time.h> 		/* kqueue */
 #include <fcntl.h>		/* file control */
@@ -17,61 +20,100 @@
 #include <unistd.h> 		/* to close */
 #include <string.h>		/* strlen */
 #include <sys/stat.h>		/* struct stat */
+
+/* std libs */
 #include <stdio.h>
 #include <stdlib.h> 
 
+/* udp client lbs */
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <netdb.h> 
+#include <arpa/inet.h>
 
-#include <time.h>
-#include <locale.h>
-#include <langinfo.h>
+/* Define the local server to send the events to */
+#define SERVER_IP "127.0.0.1"
+#define SERVER_PORT 2000
 
+int sendMessage(char *message) {
+	#if DEBUG
+		printf("Sending '%s' to server\n", message);
+	#endif
+
+	int socketfp;
+	struct sockaddr_in serv_addr;
+
+	/* set up a UDP socket for sending the message */	
+	if((socketfp = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) == -1) {
+		printf("Error opening socket.\n");
+		return 1;
+	}
+
+	/* set up the internet addr of the event server */
+	bzero((char *) &serv_addr, sizeof(serv_addr)); /* bzero is deprecated, use memset on new systems */
+	serv_addr.sin_family = AF_INET;
+	serv_addr.sin_port = htons(SERVER_PORT);
+	serv_addr.sin_addr.s_addr = inet_addr(SERVER_IP);
+	
+	/* send the message to the event server */
+	if(sendto(socketfp, message, strlen(message), 0, (struct sockaddr *) &serv_addr, sizeof(struct sockaddr_in)) < 0) {
+		printf("Error in sending message\n"); 
+		return 1;
+	}
+	
+	/* close the socket */
+	close(socketfp);
+	return EXIT_SUCCESS;
+}
 
 void getLatestFile(char *dirname) {
-	DIR *pdir;
-	struct dirent *pent;
+	DIR *dirvar;
+	struct dirent *result;
 	struct stat statbuf;
 	int *newFileStamp = 0;
 	char *newFileName = malloc(sizeof(*newFileName));
-	/* datestrings: */
-	struct tm      *tm;
-	char            datestring[256];
-		
-	pdir = opendir(dirname);
+	dirvar = opendir(dirname);
 
-	while ((pent=readdir(pdir))!=NULL) {
-		if(strcmp(".", pent->d_name) < 0 || strcmp("..", pent->d_name) < 0) {
+	while ((result=readdir(dirvar))!=NULL) {
+		if(strcmp(".", result->d_name) < 0 || strcmp("..", result->d_name) < 0) {
 			/* get full path for stat() */
-			int len = strlen(dirname) + strlen(pent->d_name) + 1;
+			int len = strlen(dirname) + strlen(result->d_name) + 1;
 			char* fullpath = malloc(len);
 			strcpy(fullpath, dirname);
-			strcat(fullpath, pent->d_name);
+			strcat(fullpath, result->d_name);
 
 			if (stat(fullpath, &statbuf) == -1) {
-				fprintf(stderr, "fsize: can't access %s\n", pent->d_name);
+				fprintf(stderr, "fsize: can't access %s\n", result->d_name);
 				return;
 			}
 
-			tm = localtime(&statbuf.st_mtime);
-			/* Get localized date string. */
- 			strftime(datestring, sizeof(datestring), nl_langinfo(D_T_FMT), tm); 
-			/* printf(" %s %s\n", datestring, pent->d_name); */
-
 			int tstamp = statbuf.st_mtime;
 
-			if (tstamp >= newFileStamp) {
+			if (tstamp >= (int*) newFileStamp) {
 				newFileStamp = (int*) malloc (tstamp+1);
-				newFileName = (char*) malloc (*pent->d_name+1);
+				newFileName = (char*) malloc (*result->d_name+1);
 
-				newFileStamp = tstamp;
-				newFileName = pent->d_name;
+				newFileStamp = (int) tstamp;
+				newFileName = result->d_name;
 			}
-			printf(".");
+			#if DEBUG
+				printf(".");
+			#endif
 		}
 	}
-	printf("newest file is: %s\n", newFileName);
-	free(pent);
-	closedir(pdir);
-
+	#if DEBUG
+		printf("newest file is: %s\n", newFileName);
+	#endif
+	if(sendMessage(newFileName)) {
+		#if DEBUG
+			printf("Message sent to server..\n");
+		#endif
+	} else {
+		printf("Could not send message to server!\n");
+	}
+	free(result);
+	closedir(dirvar);
 }
 
 
@@ -106,11 +148,15 @@ int main (int argc, char *argv[]) {
 			perror("kevent");
 		} else if (nev > 0) {
 			if (event.fflags & NOTE_DELETE) {
-				printf("File deleted\n");
+				#if DEBUG
+					printf("File deleted\n");
+				#endif
 				break;
 			}
 			if (event.fflags & NOTE_EXTEND || event.fflags & NOTE_WRITE) {
-				printf("Dir modified, running check..");
+				#if DEBUG
+					printf("Dir modified, running check..");
+				#endif
 				getLatestFile(argv[1]);
 			}
 		}
