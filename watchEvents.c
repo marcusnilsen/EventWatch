@@ -63,7 +63,7 @@ int sendMessage(char *message) {
 	
 	/* close the socket */
 	close(socketfp);
-	return EXIT_SUCCESS;
+	return 0;
 }
 
 void getLatestFile(char *dirname) {
@@ -122,18 +122,20 @@ int main (int argc, char *argv[]) {
 	struct kevent change;
 	struct kevent event;
 	if (argc != 2) {
-		fprintf(stderr, "Usage: %s directory\n", argv[0]);
-		exit(EXIT_FAILURE);
+		fprintf("Usage: %s directory\n", argv[0]);
+		return 1;
 	}
 
 	kq = kqueue();
 	if (kq == -1) {
-		perror("kqueue");
+		printf("Could not init kqueue.\n");	
+		return 1;
 	}
 
 	f = open(argv[1], O_RDONLY);
 	if (f == -1) {
-		perror("open");
+		printf("Could not open directory.\n");
+		return 1;
 	}
 
 	EV_SET(&change, f, EVFILT_VNODE, 
@@ -144,7 +146,10 @@ int main (int argc, char *argv[]) {
 	for(;;) {
 		nev = kevent(kq, &change, 1, &event, 1, NULL);
 		if (nev == -1) {
-			perror("kevent");
+			close(kq);
+			close(f);
+			printf("Could not init kevent.\n");
+			return 1;
 		} else if (nev > 0) {
 			if (event.fflags & NOTE_DELETE) {
 				#if DEBUG
@@ -163,7 +168,7 @@ int main (int argc, char *argv[]) {
 	
 	close(kq);
 	close(f);
-	return EXIT_SUCCESS;
+	return 0;
 }
 
 
