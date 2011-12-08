@@ -83,7 +83,7 @@ void getLatestFile(char *dirname) {
 			strcat(fullpath, result->d_name);
 
 			if (stat(fullpath, &statbuf) == -1) {
-				fprintf(stderr, "fsize: can't access %s\n", result->d_name);
+				printf(stderr, "fsize: can't access %s\n", result->d_name);
 				return;
 			}
 
@@ -122,7 +122,7 @@ int main (int argc, char *argv[]) {
 	struct kevent change;
 	struct kevent event;
 	if (argc != 2) {
-		fprintf("Usage: %s directory\n", argv[0]);
+		printf("Usage: %s directory\n", argv[0]);
 		return 1;
 	}
 
