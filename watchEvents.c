@@ -7,7 +7,6 @@
  *
  *     gcc -o watchEvents watchEvents.c -Wall -W -Wextra -ansi -pedantic
  *
- *	rm watchEvents ; gcc -o watchEvents watchEvents.c -Wall -W -Wextra -ansi -pedanti && ./watchEvents /tmp/testfile/
  *	Check for incoming message on server: nc -l -u -p 2000
  */
 
