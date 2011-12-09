@@ -10,6 +10,8 @@
  *	Check for incoming message on server: nc -l -u -p 2000
  */
 
+#define DEBUG 0
+
 /* Kqueue and file control */
 #include <sys/types.h>		/* needed for kqueue on fbsd, but works without on OSX */
 #include <sys/event.h> 		/* kqueue */
@@ -70,7 +72,7 @@ void getLatestFile(char *dirname) {
 	DIR *dirvar;
 	struct dirent *result;
 	struct stat statbuf;
-	int *newFileStamp = 0;
+	int newFileStamp = 0;
 	char *newFileName = malloc(sizeof(*newFileName));
 	dirvar = opendir(dirname);
 
@@ -83,17 +85,16 @@ void getLatestFile(char *dirname) {
 			strcat(fullpath, result->d_name);
 
 			if (stat(fullpath, &statbuf) == -1) {
-				printf(stderr, "fsize: can't access %s\n", result->d_name);
+				printf("fsize: can't access %s\n", result->d_name);
+				closedir(dirvar);
 				return;
 			}
 
 			int tstamp = statbuf.st_mtime;
 
-			if (tstamp >= (int*) newFileStamp) {
-				newFileStamp = (int*) malloc (tstamp+1);
+			if (tstamp >= newFileStamp) {
 				newFileName = (char*) malloc (*result->d_name+1);
-
-				newFileStamp = (int) tstamp;
+				newFileStamp = tstamp;
 				newFileName = result->d_name;
 			}
 			#if DEBUG
