@@ -7,29 +7,35 @@
 # Watch for socket events and write them to channel.
 #
 
+# Freebsd pkg: /usr/ports/net/tcludp
+package require udp
+
 # Connection variables
-set localip ""
-set localport 29522
-set channel ""
+set localport 20000
+set channel "#channel"
 set eventmessage "New file uploaded"
-set eventrurl ""
+set eventurl "http://example.com/"
 
 # Get output from socket
-proc read_sock {sock} { 
-	set message [gets $sock] 
-	if {[string match *Event* $message]} {
-		# Remove "Event " from message and write to $channel
-		set message [string trimleft $message 6]
-   		putserv "PRIVMSG $channel \00300$eventmessage\003: $eventurl$message\003"
-	} 
-} 
+proc read_sock {sock} {
+	global channel
+	global eventmessage
+	global eventurl
+	set message [read $sock]
+	set peer [fconfigure $sock -peer]
+	#putlog "UDP message from $peer: $message (Length: [string length $message])"
 
-# Set connection
-set socketvar [socket $localip $localport] 
+	if {[regexp Event $message]} {
+		set trimmessage [string range $message 6 31]
+		set msgString "\00300$eventmessage\003: $eventurl$trimmessage\003"
+		putserv "PRIVMSG $channel $msgString"
+	}
+	return 0
+}
 
-# Set the socket to readable, and monitor it
-fileevent $socketvar readable [list read_sock $socketvar] 
+set socketvar [udp_open $localport]
+fconfigure $socketvar -buffering line
+fileevent $socketvar readable [list read_sock $socketvar]
+putlog "Listening on UDP port [fconfigure $socketvar -myport]"
 
-# Set socket options: Flush output from channel after every \n 
-fconfigure $socketvar -buffering line 
-
+putlog "GetEvents addon by mables"

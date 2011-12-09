@@ -5,12 +5,12 @@
  *                      https://github.com/mables                            *
  *
  *
- *     gcc -o watchEvents watchEvents.c -Wall -W -Wextra -ansi -pedantic
+ *      gcc -o watchEvents watchEvents.c -Wall -W -Wextra -ansi
  *
  *	Check for incoming message on server: nc -l -u -p 2000
  */
 
-#define DEBUG 0
+#define DEBUG 1
 
 /* Kqueue and file control */
 #include <sys/types.h>		/* needed for kqueue on fbsd, but works without on OSX */
@@ -35,15 +35,23 @@
 
 /* Define the local server to send the events to */
 #define SERVER_IP "127.0.0.1"
-#define SERVER_PORT 2000
+#define SERVER_PORT 20000
 
 int sendMessage(char *message) {
 	#if DEBUG
 		printf("Sending '%s' to server\n", message);
 	#endif
 
+	char mType[] = "Event:";
+	char *fullMessage = malloc(sizeof(mType)+sizeof(message));
+
 	int socketfp;
 	struct sockaddr_in serv_addr;
+
+	/* Setting up the message string to be sent */
+	strcat(fullMessage, mType);
+	strcat(fullMessage, message);
+	
 
 	/* set up a UDP socket for sending the message */	
 	if((socketfp = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) == -1) {
@@ -58,7 +66,7 @@ int sendMessage(char *message) {
 	serv_addr.sin_addr.s_addr = inet_addr(SERVER_IP);
 	
 	/* send the message to the event server */
-	if(sendto(socketfp, message, strlen(message), 0, (struct sockaddr *) &serv_addr, sizeof(struct sockaddr_in)) < 0) {
+	if(sendto(socketfp, fullMessage, strlen(fullMessage), 0, (struct sockaddr *) &serv_addr, sizeof(struct sockaddr_in)) < 0) {
 		printf("Error in sending message\n"); 
 		return 1;
 	}
@@ -105,7 +113,7 @@ void getLatestFile(char *dirname) {
 	#if DEBUG
 		printf("newest file is: %s\n", newFileName);
 	#endif
-	if(sendMessage(newFileName)) {
+	if(sendMessage(newFileName) == 0) {
 		#if DEBUG
 			printf("Message sent to server..\n");
 		#endif
