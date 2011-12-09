@@ -5,11 +5,32 @@
    Watch for events on a dir (using kqueue on FreeBSD) and send changes to a IRC channel through sockets.
   	+ Useful when you have a jail, a vm or servers seperating the eggdrop and the folder in question.
 
+
 		[(WEB) SERVER #1] <-- Watching for web folder changes (picture uploads etc.)
 		        ||
 		        ||    <------ Sockets for transmitting (info) data
 		        ||
 		[(BOT) SERVER #2] <-- Eggdrop connected to IRC posting the data
 
-	+ Compile and run as ./watchEvents /path/to/folder/
 
+
+			          +-+ Install instructions +-+
+
+	1. Open and configure the watchEvents.c file.
+	2. Compile the c file: gcc -o watchEvents watchEvents.c -Wall -W -Wextra -ansi
+	3. Run it on a web server: ./watchEvents /path/to/upload/folder/
+
+	4. Open and configure the GetEvents.tcl file.
+	5. Include it in the eggdrop.conf file: source /usr/local/share/eggdrop/scripts/GetEvents.tcl
+	
+	It should now post changes to your IRC changes when uploading/creating a file in /path/to/upload/folder/
+ 
+	
+	! A rc.d startup script have been added for FreeBSD users in the rc.d dir. 
+	! Please read it and configure it before using it. 
+
+	
+	! Compiled and vertified on OSX 10.7 with developer pkg and FreeBSD 8.0.	
+
+
+	+ mables 2011.

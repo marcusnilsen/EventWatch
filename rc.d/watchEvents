@@ -1,0 +1,32 @@
+#!/bin/sh
+#
+# FreeBSD rc.d script by mables. 
+#
+# + Place under /usr/local/etc/rc.d and make executable
+#
+# + Add the following two lines to /etc/rc.conf to enable watchEvents:
+#
+# watchEvents_enable="YES"
+#
+# + And the path to your web upload dir:
+# 
+# watchEvents_flags="/usr/local/www/sites/example.com/uploads/"
+#
+# 
+
+. /etc/rc.subr
+
+name=watchEvents
+rcvar=`set_rcvar`
+command_args="&"
+
+#
+# + Set the location of your compiled program:
+#
+command=/usr/local/bin/watchEvents
+
+load_rc_config ${name}
+
+watchEvents_enable=${watchEvents_enable:-"NO"}
+
+run_rc_command "$1"
