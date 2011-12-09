@@ -10,7 +10,7 @@
  *	Check for incoming message on server: nc -l -u -p 2000
  */
 
-#define DEBUG 1
+#define DEBUG 0
 
 /* Kqueue and file control */
 #include <sys/types.h>		/* needed for kqueue on fbsd, but works without on OSX */
