@@ -7,7 +7,9 @@
  *
  *      gcc -o watchEvents watchEvents.c -Wall -W -Wextra -ansi
  *
+ *
  *	Check for incoming message on server: nc -l -u -p 2000
+ *
  */
 
 #define DEBUG 0
@@ -72,6 +74,7 @@ int sendMessage(char *message) {
 	}
 	
 	/* close the socket */
+	free(fullMessage);
 	close(socketfp);
 	return 0;
 }
@@ -81,14 +84,14 @@ void getLatestFile(char *dirname) {
 	struct dirent *result;
 	struct stat statbuf;
 	int newFileStamp = 0;
-	char *newFileName = malloc(sizeof(*newFileName));
+	char *newFileName;
 	dirvar = opendir(dirname);
 
 	while ((result=readdir(dirvar))!=NULL) {
 		if(strcmp(".", result->d_name) < 0 || strcmp("..", result->d_name) < 0) {
 			/* get full path for stat() */
 			int len = strlen(dirname) + strlen(result->d_name) + 1;
-			char* fullpath = malloc(len);
+			char *fullpath = malloc(len);
 			strcpy(fullpath, dirname);
 			strcat(fullpath, result->d_name);
 
@@ -101,13 +104,14 @@ void getLatestFile(char *dirname) {
 			int tstamp = statbuf.st_mtime;
 
 			if (tstamp >= newFileStamp) {
-				newFileName = (char*) malloc (*result->d_name+1);
+				newFileName = (char*) malloc (sizeof(result->d_name));
 				newFileStamp = tstamp;
 				newFileName = result->d_name;
 			}
 			#if DEBUG
 				printf(".");
 			#endif
+			free(fullpath);
 		}
 	}
 	#if DEBUG
@@ -121,6 +125,7 @@ void getLatestFile(char *dirname) {
 		printf("Could not send message to server!\n");
 	}
 	free(result);
+	/*free(newFileName);*/
 	closedir(dirvar);
 }
 
