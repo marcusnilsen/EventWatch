@@ -45,15 +45,13 @@ int sendMessage(char *message) {
 	#endif
 
 	char mType[] = "Event:";
-	char *fullMessage = malloc(sizeof(mType)+sizeof(message));
+	char *fullMessage = (char *) malloc(sizeof(mType)+sizeof(message));
 
 	int socketfp;
 	struct sockaddr_in serv_addr;
 
 	/* Setting up the message string to be sent */
-	strcat(fullMessage, mType);
-	strcat(fullMessage, message);
-	
+	sprintf(fullMessage, "%s%s", mType, message);
 
 	/* set up a UDP socket for sending the message */	
 	if((socketfp = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) == -1) {
@@ -84,7 +82,7 @@ void getLatestFile(char *dirname) {
 	struct dirent *result;
 	struct stat statbuf;
 	int newFileStamp = 0;
-	char *newFileName;
+	char *newFileName = (char *) malloc(1);
 	dirvar = opendir(dirname);
 
 	while ((result=readdir(dirvar))!=NULL) {
@@ -104,9 +102,9 @@ void getLatestFile(char *dirname) {
 			int tstamp = statbuf.st_mtime;
 
 			if (tstamp >= newFileStamp) {
-				newFileName = (char*) malloc (sizeof(result->d_name));
+				newFileName = (char*) realloc (newFileName, sizeof(result->d_name));
 				newFileStamp = tstamp;
-				newFileName = result->d_name;
+				memcpy(newFileName, result->d_name, sizeof(result->d_name));
 			}
 			#if DEBUG
 				printf(".");
@@ -125,7 +123,7 @@ void getLatestFile(char *dirname) {
 		printf("Could not send message to server!\n");
 	}
 	free(result);
-	/*free(newFileName);*/
+	free(newFileName);
 	closedir(dirvar);
 }
 
