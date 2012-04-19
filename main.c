@@ -14,6 +14,10 @@
 
 #define DEBUG 0
 
+/* #include "sock.h" */
+#include "watchEvents.h"
+
+
 /* Kqueue and file control */
 #include <sys/types.h>		/* needed for kqueue on fbsd, but works without on OSX */
 #include <sys/event.h> 		/* kqueue */
@@ -28,55 +32,6 @@
 #include <stdio.h>
 #include <stdlib.h> 
 
-/* udp client lbs */
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <netdb.h> 
-#include <arpa/inet.h>
-
-/* Define the local server to send the events to */
-#define SERVER_IP "127.0.0.1"
-#define SERVER_PORT 20000
-
-int sendMessage(char *message) {
-	#if DEBUG
-		printf("Sending '%s' to server\n", message);
-	#endif
-
-	char mType[] = "Event:";
-	char *fullMessage = (char *) malloc(sizeof(mType)+sizeof(message));
-
-	int socketfp;
-	struct sockaddr_in serv_addr;
-
-	/* Setting up the message string to be sent */
-	sprintf(fullMessage, "%s%s", mType, message);
-
-	/* set up a UDP socket for sending the message */	
-	if((socketfp = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) == -1) {
-		printf("Error opening socket.\n");
-		return 1;
-	}
-
-	/* set up the internet addr of the event server */
-	bzero((char *) &serv_addr, sizeof(serv_addr)); /* bzero is deprecated, use memset on new systems */
-	serv_addr.sin_family = AF_INET;
-	serv_addr.sin_port = htons(SERVER_PORT);
-	serv_addr.sin_addr.s_addr = inet_addr(SERVER_IP);
-	
-	/* send the message to the event server */
-	if(sendto(socketfp, fullMessage, strlen(fullMessage), 0, (struct sockaddr *) &serv_addr, sizeof(struct sockaddr_in)) < 0) {
-		printf("Error in sending message\n"); 
-		return 1;
-	}
-	
-	/* close the socket */
-	free(fullMessage);
-	close(socketfp);
-	return 0;
-}
-
 void getLatestFile(char *dirname) {
 	DIR *dirvar;
 	struct dirent *result;
@@ -88,8 +43,7 @@ void getLatestFile(char *dirname) {
 	while ((result=readdir(dirvar))!=NULL) {
 		if(strcmp(".", result->d_name) < 0 || strcmp("..", result->d_name) < 0) {
 			/* get full path for stat() */
-			int len = strlen(dirname) + strlen(result->d_name) + 1;
-			char *fullpath = malloc(len);
+			char *fullpath = malloc(strlen(dirname) + strlen(result->d_name) + 1);
 			strcpy(fullpath, dirname);
 			strcat(fullpath, result->d_name);
 
@@ -115,6 +69,9 @@ void getLatestFile(char *dirname) {
 	#if DEBUG
 		printf("newest file is: %s\n", newFileName);
 	#endif
+
+	/* Check if newest file is within last 5sec? to avoid announcing old files when a file is deleted */
+	/* if(tstamp > now()-5sec) goto sendMessage: */
 	if(sendMessage(newFileName) == 0) {
 		#if DEBUG
 			printf("Message sent to server..\n");
@@ -130,7 +87,7 @@ void getLatestFile(char *dirname) {
 
 /* main */
 int main (int argc, char *argv[]) {
-	int f, kq, nev;
+	int folder, kque, nev;
 	struct kevent change;
 	struct kevent event;
 	if (argc != 2) {
@@ -138,28 +95,29 @@ int main (int argc, char *argv[]) {
 		return 1;
 	}
 
-	kq = kqueue();
-	if (kq == -1) {
+	kque = kqueue();
+	if (kque == -1) {
 		printf("Could not init kqueue.\n");	
 		return 1;
 	}
 
-	f = open(argv[1], O_RDONLY);
-	if (f == -1) {
+	folder = open(argv[1], O_RDONLY);
+	if (folder == -1) {
 		printf("Could not open directory.\n");
 		return 1;
 	}
 
-	EV_SET(&change, f, EVFILT_VNODE, 
+	EV_SET(&change, folder, EVFILT_VNODE, 
 		EV_ADD | EV_ENABLE | EV_ONESHOT, 
 		NOTE_DELETE | NOTE_EXTEND | NOTE_WRITE | NOTE_ATTRIB,
 		0, NULL);
 
+	/* Main-loop */
 	for(;;) {
-		nev = kevent(kq, &change, 1, &event, 1, NULL);
+		nev = kevent(kque, &change, 1, &event, 1, NULL);
 		if (nev == -1) {
-			close(kq);
-			close(f);
+			close(kque);
+			close(folder);
 			printf("Could not init kevent.\n");
 			return 1;
 		} else if (nev > 0) {
@@ -178,8 +136,8 @@ int main (int argc, char *argv[]) {
 		}
 	}
 	
-	close(kq);
-	close(f);
+	close(kque);
+	close(folder);
 	return 0;
 }
 

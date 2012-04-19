@@ -16,8 +16,10 @@ set channel "#channel"
 set eventmessage "New file uploaded"
 set eventurl "http://example.com/"
 
+
+
 # Get output from socket
-proc read_sock {sock} {
+proc readSocket {sock} {
 	global channel
 	global eventmessage
 	global eventurl
@@ -30,12 +32,17 @@ proc read_sock {sock} {
 		set msgString "\00300$eventmessage\003: $eventurl$trimmessage\003"
 		putserv "PRIVMSG $channel $msgString"
 	}
+	if {[regexp IFORUM $message]} {
+		set trimmessage [string range $message 7 200]
+		set msgString "\00300$trimmessage\003"
+		putserv "PRIVMSG $channel $msgString"
+	} 
 	return 0
 }
 
 set socketvar [udp_open $localport]
 fconfigure $socketvar -buffering line
-fileevent $socketvar readable [list read_sock $socketvar]
+fileevent $socketvar readable [list readSocket $socketvar]
 putlog "Listening on UDP port [fconfigure $socketvar -myport]"
 
 putlog "GetEvents addon by mables"
