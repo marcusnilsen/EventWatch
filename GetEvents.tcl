@@ -33,10 +33,11 @@ proc readSocket {sock} {
 		putserv "PRIVMSG $channel $msgString"
 	}
 	if {[regexp IFORUM $message]} {
-		set trimmessage [string range $message 7 200]
+		set trimmessage [string range $message 7 250]
 		set msgString "\00300$trimmessage\003"
 		putserv "PRIVMSG $channel $msgString"
-	} 
+	}
+	flush $sock
 	return 0
 }
 
